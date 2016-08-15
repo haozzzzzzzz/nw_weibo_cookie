@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>登陆并抓取微博cookie</title>
+		<style type="text/css">
+			*{
+				margin: 0;
+				padding: 0;
+			}
+			
+			html,body{
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			#weibo-frame{
+				width: 100%;
+				height: 100%;
+			}
+		</style>
+		<script type="text/javascript" src="jquery-3.1.0.min.js"></script>
+	</head>
+	<body>
+		<iframe id="weibo-frame" nwfaketop nwdisable nwUserAgent="Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36"></iframe>
+		<script type="text/javascript">
+
+			//配置weibo入口链接
+			var iframeSrc = 'http://weibo.com';
+
+			$(function(){
+				//读取微博用户参数
+				var weiboParam = require('./weibo.json');
+				var weiboFrame = document.getElementById('weibo-frame');
+				var $weiboFrame = $(weiboFrame);
+
+				/**
+				 * 分隔cookie字符串
+				 * @param strCookie
+                 * @returns {{}}
+                 */
+				function splitCookie( strCookie ){
+					var arrCookieStrs = strCookie.split('; ');
+					var cookie = {};
+					for( var index in arrCookieStrs ){
+						var cookieStr = arrCookieStrs[ index ];
+						var keyValueStrs = cookieStr.split('=');
+						cookie[ keyValueStrs[ 0 ] ] = keyValueStrs[ 1 ]
+					}
+					return cookie;
+				}
+
+				/**
+				 * 如果没有登陆，则执行登陆操作
+				 */
+				function login(){
+					var weiboWindow = weiboFrame.contentWindow;
+					var weiboDocument = weiboWindow.document;
+					var $weiboDocument = $( weiboDocument );
+
+					var $normalForm = $('.W_login_form[node-type="normal_form"]', $weiboDocument);
+					var $inputUsername = $( 'input[name="username"]', $normalForm );
+					var $inputPassword = $( 'input[name="password"]', $normalForm );
+					var $btnSubmit = $('.W_btn_a[action-type="btn_submit"]', $normalForm );
+
+					$inputUsername.val( weiboParam.loginName );
+					$inputPassword.val( weiboParam.password );
+					$btnSubmit[0].click();
+				}
+
+				/**
+				 * 如果登陆了，执行获取cookie操作
+				 */
+				function loggedIn(){
+					var weiboWindow = weiboFrame.contentWindow;
+					var weiboDocument = weiboWindow.document;
+					var $weiboDocument = $(weiboDocument);
+
+					console.log( weiboDocument.cookie );
+					console.log( splitCookie( weiboDocument.cookie ) );
+
+				}
+
+				/**
+				 * iframe页面加载完成
+				 */
+				function frameLoaded(){
+					var weiboWindow = weiboFrame.contentWindow;
+					var weiboDocument = weiboWindow.document;
+					var $weiboDocument = $( weiboDocument );
+
+					var cookie = splitCookie( weiboDocument.cookie );
+					
+					function checkUrlChange(){
+						var newUrl = weiboWindow.location.href;
+
+						if( newUrl == weiboParam.loggedInUrl ){
+							loggedIn();
+							return;
+						}
+
+						setTimeout( checkUrlChange, 1000 );
+
+					}
+
+					checkUrlChange();
+
+					var url = weiboWindow.location.href;
+					if( 'http://weibo.com/' == url ){//未登陆
+						login();
+						
+					}
+
+				}
+
+				$weiboFrame.attr( 'src', iframeSrc );
+				$weiboFrame.on('load', function(){
+					frameLoaded();
+				});
+
+			});
+		</script>
+	</body>
+</html>
